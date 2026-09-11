@@ -33,13 +33,14 @@ mkdir -p ~/AniMerse && cd ~/AniMerse
 # ... colocar aquí los archivos del proyecto ...
 ```
 
-### 3. Entorno virtual + dependencias Python
+### 3. Ejecutar script de inicio (Entorno virtual + API Key)
+
+El proyecto incluye un script `run.sh` que creará automáticamente el entorno virtual, instalará las dependencias necesarias y configurará tu API Key de Jimaku para descargar los subtítulos.
 
 ```bash
 cd ~/AniMerse
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+chmod +x run.sh
+./run.sh
 ```
 
 ### 4. (Opcional) Instalar `alass` como backend de sincronización
@@ -66,13 +67,14 @@ mkdir -p ~/Jellyfin/Series     # Raíz de la biblioteca Jellyfin
 
 ### Ejecución básica
 
+Para ejecutar el programa con todos los ajustes predeterminados, simplemente ejecuta tu script de inicio:
+
 ```bash
 cd ~/AniMerse
-source .venv/bin/activate
-python animerse.py
+./run.sh
 ```
 
-Esto escanea `~/Downloads/Anime`, organiza los vídeos en `~/Jellyfin/Series/`, descarga subtítulos japoneses y los sincroniza con `ffsubsync`.
+Esto escanea `~/Downloads/Anime`, organiza los vídeos en `~/Jellyfin/Series/`, descarga subtítulos japoneses (priorizando archivos .srt y buscando coincidir grupos) y los sincroniza con `ffsubsync`.
 
 ### Opciones de línea de comandos
 
@@ -89,18 +91,20 @@ python animerse.py [opciones]
 
 ### Ejemplos
 
+Cualquier argumento adicional que pases a `run.sh` se le enviará directamente a `animerse.py`:
+
 ```bash
 # Usar una carpeta de origen diferente
-python animerse.py --source /mnt/descargas/anime
+./run.sh --source /mnt/descargas/anime
 
 # Solo organizar archivos, sin subtítulos ni sincronización
-python animerse.py --skip-subs --skip-sync
+./run.sh --skip-subs --skip-sync
 
 # Sincronizar con alass en vez de ffsubsync
-python animerse.py --sync-tool alass
+./run.sh --sync-tool alass
 
 # Ver qué haría el script sin mover nada
-python animerse.py --dry-run -v
+./run.sh --dry-run -v
 ```
 
 ### Variables de entorno (alternativa a CLI)
@@ -160,7 +164,7 @@ crontab -e
 Añadir:
 
 ```cron
-0 * * * * cd ~/AniMerse && /home/TU_USUARIO/AniMerse/.venv/bin/python animerse.py >> /tmp/animerse_cron.log 2>&1
+0 * * * * /home/TU_USUARIO/AniMerse/run.sh >> /tmp/animerse_cron.log 2>&1
 ```
 
 ---
