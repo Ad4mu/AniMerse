@@ -60,6 +60,12 @@ def _parse_args() -> argparse.Namespace:
         help=f"Herramienta de sincronización (por defecto: {config.SYNC_TOOL})",
     )
     parser.add_argument(
+        "--sub-provider",
+        choices=["jimaku", "kitsunekko", "all"],
+        default=None,
+        help=f"Proveedor de subtítulos (por defecto: {config.SUBTITLE_PROVIDER})",
+    )
+    parser.add_argument(
         "--skip-subs",
         action="store_true",
         help="Omitir la descarga de subtítulos.",
@@ -89,6 +95,8 @@ def main() -> None:
 
     if args.sync_tool:
         config.SYNC_TOOL = args.sync_tool
+    if args.sub_provider:
+        config.SUBTITLE_PROVIDER = args.sub_provider
 
     source = args.source or config.SOURCE_DIR
 
@@ -96,6 +104,7 @@ def main() -> None:
     logger.info("AniMerse — inicio del pipeline")
     logger.info("Origen: %s", source)
     logger.info("Destino: %s", config.JELLYFIN_ROOT)
+    logger.info("Sub provider: %s", config.SUBTITLE_PROVIDER)
     logger.info("Sync tool: %s", config.SYNC_TOOL)
     logger.info("=" * 60)
 

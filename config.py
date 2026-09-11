@@ -26,16 +26,32 @@ JELLYFIN_ROOT: Path = Path(os.environ.get(
 VIDEO_EXTENSIONS: set[str] = {".mkv", ".mp4", ".avi", ".webm", ".ts"}
 
 # ---------------------------------------------------------------------------
-# Kitsunekko (subtítulos japoneses)
+# Proveedores de subtítulos japoneses
+# ---------------------------------------------------------------------------
+# Proveedor a usar: "jimaku", "kitsunekko" o "all" (prueba todos con fallback).
+SUBTITLE_PROVIDER: str = os.environ.get("ANIMERSE_SUB_PROVIDER", "all")
+
+# ---------------------------------------------------------------------------
+# Kitsunekko
 # ---------------------------------------------------------------------------
 KITSUNEKKO_BASE_URL: str = "https://kitsunekko.net"
 KITSUNEKKO_JP_DIR: str = f"{KITSUNEKKO_BASE_URL}/dirlist.php?dir=subtitles/japanese/"
 
-# Extensiones de subtítulos que nos interesan.
-SUBTITLE_EXTENSIONS: set[str] = {".srt", ".ass", ".ssa"}
+# ---------------------------------------------------------------------------
+# Jimaku.cc (API REST — requiere API key gratuita)
+# ---------------------------------------------------------------------------
+JIMAKU_BASE_URL: str = "https://jimaku.cc"
+JIMAKU_API_URL: str = f"{JIMAKU_BASE_URL}/api"
+JIMAKU_API_KEY: str = os.environ.get("ANIMERSE_JIMAKU_API_KEY", "")
 
-# Extensiones de archivos comprimidos que Kitsunekko puede devolver.
-ARCHIVE_EXTENSIONS: set[str] = {".zip", ".rar"}
+# ---------------------------------------------------------------------------
+# Extensiones reconocidas
+# ---------------------------------------------------------------------------
+# Extensiones de subtítulos que nos interesan.
+SUBTITLE_EXTENSIONS: set[str] = {".srt", ".ass", ".ssa", ".sub", ".sup", ".idx"}
+
+# Extensiones de archivos comprimidos.
+ARCHIVE_EXTENSIONS: set[str] = {".zip", ".rar", ".7z"}
 
 # ---------------------------------------------------------------------------
 # Sincronización de subtítulos
