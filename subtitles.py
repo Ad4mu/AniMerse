@@ -154,6 +154,32 @@ def _try_download_from_provider(
 
     subtitle_path: Optional[Path] = None
 
+    # Ordenar archivos para priorizar .srt y consistencia de grupo (fansub)
+    video_filename = info.original_path.name
+    group_match = re.match(r'^\[(.*?)\]', video_filename)
+    video_group = group_match.group(1).lower() if group_match else ""
+
+    def sort_key(f: SubtitleFile):
+        ext = Path(f.filename).suffix.lower()
+        score = 0
+        
+        # Prioridad 1: Coincidencia de grupo (Fansub) en el nombre
+        if video_group and f"[{video_group}]" in f.filename.lower():
+            score += 100
+            
+        # Prioridad 2: Priorizar .srt para evitar transcodificación / compatibilidad en TV
+        if ext == '.srt':
+            score += 10
+        elif ext == '.ass':
+            score += 5
+        elif ext in ARCHIVE_EXTENSIONS:
+            score += 1
+            
+        # Retornar score invertido para orden descendente, luego nombre para orden alfabético consistente
+        return (-score, f.filename)
+
+    files.sort(key=sort_key)
+
     # 1. Buscar coincidencia directa por número de episodio
     for f in files:
         ext = Path(f.filename).suffix.lower()
@@ -191,6 +217,75 @@ def _try_download_from_provider(
                         break
 
     return subtitle_path
+
+
+# ---------------------------------------------------------------------------
+# Limpieza de subtítulos bilingües
+# ---------------------------------------------------------------------------
+
+def _clean_bilingual_ass(filepath: Path) -> None:
+    """
+    Lee un archivo .ass y, si contiene estilos separados para japonés y 
+    otros idiomas (ej. inglés/romaji), elimina las líneas de diálogo 
+    que no pertenezcan a los estilos japoneses.
+    """
+    if filepath.suffix.lower() != ".ass":
+        return
+    
+    try:
+        with open(filepath, 'r', encoding='utf-8-sig') as f:
+            lines = f.readlines()
+    except UnicodeDecodeError:
+        try:
+            with open(filepath, 'r', encoding='utf-16') as f:
+                lines = f.readlines()
+        except Exception as e:
+            logger.warning("No se pudo leer el subtítulo %s para limpieza: %s", filepath.name, e)
+            return
+            
+    style_has_japanese = {}
+    # Patrón para caracteres hiragana, katakana y kanji
+    japanese_pattern = re.compile(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]')
+    
+    for line in lines:
+        if line.startswith('Dialogue:'):
+            parts = line.split(',', 9)
+            if len(parts) >= 10:
+                style = parts[3]
+                text = parts[9]
+                
+                # Quitar etiquetas ASS para evaluar solo el texto visible
+                text_clean = re.sub(r'\{.*?\}', '', text)
+                
+                if style not in style_has_japanese:
+                    style_has_japanese[style] = False
+                
+                if not style_has_japanese[style]:
+                    if japanese_pattern.search(text_clean):
+                        style_has_japanese[style] = True
+                        
+    # Si no hay texto japonés en absoluto o si todos los estilos tienen japonés, no hacemos nada
+    if not any(style_has_japanese.values()) or all(style_has_japanese.values()):
+        return
+        
+    new_lines = []
+    removed_styles = [s for s, has_jp in style_has_japanese.items() if not has_jp]
+    logger.info("Eliminando pista(s) no japonesa(s) del subtítulo: %s", ", ".join(removed_styles))
+    
+    for line in lines:
+        if line.startswith('Dialogue:'):
+            parts = line.split(',', 9)
+            if len(parts) >= 10:
+                style = parts[3]
+                if not style_has_japanese.get(style, True):
+                    continue
+        new_lines.append(line)
+        
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.writelines(new_lines)
+    except Exception as e:
+        logger.warning("Error al guardar el subtítulo limpio %s: %s", filepath.name, e)
 
 
 # ---------------------------------------------------------------------------
@@ -244,6 +339,9 @@ def download_subtitle(info: EpisodeInfo) -> Optional[Path]:
             info.anime_name, info.episode
         )
         return None
+
+    # Limpiar archivo si tiene múltiples idiomas (ej. pista en inglés y japonés)
+    _clean_bilingual_ass(subtitle_path)
 
     # Renombrar al esquema Jellyfin
     sub_ext = subtitle_path.suffix  # .srt o .ass
