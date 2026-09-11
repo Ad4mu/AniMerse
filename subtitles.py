@@ -91,6 +91,7 @@ def _extract_subtitles_from_archive(
                 return None
         elif ext == ".7z":
             try:
+                # pyrefly: ignore [missing-import]
                 import py7zr
                 with py7zr.SevenZipFile(archive_path, mode='r') as z:
                     z.extractall(path=tmp_dir)
