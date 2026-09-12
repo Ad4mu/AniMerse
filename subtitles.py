@@ -292,20 +292,23 @@ def _clean_bilingual_ass(filepath: Path) -> None:
 # API pública
 # ---------------------------------------------------------------------------
 
-def download_subtitle(info: EpisodeInfo) -> Optional[Path]:
+def download_subtitle(info: EpisodeInfo) -> list[Path]:
     """
-    Busca, descarga y renombra el subtítulo japonés para el episodio dado
-    usando los proveedores configurados.
+    Busca, descarga y renombra subtítulos para el episodio dado.
+    Utiliza los proveedores configurados para japonés y subliminal para español e inglés.
 
-    Devuelve la ruta al archivo de subtítulo final (ya renombrado junto
-    al vídeo) o ``None`` si fallaron todos los proveedores.
+    Devuelve una lista con las rutas a los archivos de subtítulo finales (ya renombrados junto
+    al vídeo).
     """
+    downloaded_paths: list[Path] = []
+    video_dir = info.original_path.parent
+
     logger.info(
-        "Buscando subtítulo japonés: %s S%02dE%02d",
+        "Buscando subtítulos para: %s S%02dE%02d",
         info.anime_name, info.season, info.episode,
     )
 
-    # Determinar qué proveedores usar
+    # 1. Subtítulos Japoneses (vía proveedores configurados)
     provider_classes = get_providers()
     active_providers: list[SubtitleProvider] = []
     
@@ -318,39 +321,64 @@ def download_subtitle(info: EpisodeInfo) -> Optional[Path]:
             active_providers.append(provider_inst)
             
     if not active_providers:
-        logger.error("No hay proveedores activos para: %s", SUBTITLE_PROVIDER)
-        return None
+        logger.error("No hay proveedores activos para japonés: %s", SUBTITLE_PROVIDER)
+    else:
+        subtitle_path_ja: Optional[Path] = None
+        for provider in active_providers:
+            logger.info("Intentando con proveedor japonés: %s", provider.name)
+            subtitle_path_ja = _try_download_from_provider(provider, info)
+            if subtitle_path_ja:
+                logger.info("✔ Subtítulo japonés encontrado con %s", provider.name)
+                break
+            else:
+                logger.info("✘ Falló con %s", provider.name)
 
-    # Intentar descargar
-    subtitle_path: Optional[Path] = None
-    
-    for provider in active_providers:
-        logger.info("Intentando con proveedor: %s", provider.name)
-        subtitle_path = _try_download_from_provider(provider, info)
-        if subtitle_path:
-            logger.info("✔ Subtítulo encontrado con %s", provider.name)
-            break
+        if subtitle_path_ja:
+            _clean_bilingual_ass(subtitle_path_ja)
+            sub_ext = subtitle_path_ja.suffix
+            final_name_ja = f"{info.original_path.stem}.ja{sub_ext}"
+            final_path_ja = video_dir / final_name_ja
+            shutil.move(str(subtitle_path_ja), str(final_path_ja))
+            logger.info("Subtítulo japonés guardado: %s", final_path_ja.name)
+            downloaded_paths.append(final_path_ja)
         else:
-            logger.info("✘ Falló con %s", provider.name)
+            logger.warning("Ningún proveedor pudo encontrar subtítulo japonés para %s E%02d", info.anime_name, info.episode)
 
-    if subtitle_path is None:
-        logger.warning(
-            "Ningún proveedor pudo encontrar subtítulo para %s E%02d",
-            info.anime_name, info.episode
+    # 2. Subtítulos adicionales (Español, Inglés) vía subliminal
+    try:
+        import subliminal
+        from babelfish import Language
+        from subliminal.video import Episode as SubliminalEpisode
+
+        logger.info("Buscando subtítulos adicionales (es, en) con subliminal...")
+        video = SubliminalEpisode(
+            info.original_path.name,
+            info.anime_name,
+            info.season,
+            info.episode
         )
-        return None
+        
+        langs = {Language('spa'), Language('eng')}
+        subs = subliminal.download_best_subtitles([video], langs)
+        
+        for sub in subs.get(video, []):
+            try:
+                lang_code = sub.language.alpha2  # 'es' or 'en'
+                # Subliminal typically downloads .srt
+                final_name = f"{info.original_path.stem}.{lang_code}.srt"
+                final_path = video_dir / final_name
+                
+                with open(final_path, "wb") as f:
+                    f.write(sub.content)
+                
+                logger.info("✔ Subtítulo %s guardado: %s", lang_code, final_path.name)
+                downloaded_paths.append(final_path)
+            except Exception as e:
+                logger.warning("Error al guardar subtítulo %s de subliminal: %s", sub.language.alpha2, e)
+                
+    except ImportError:
+        logger.warning("La librería 'subliminal' no está instalada. No se descargarán subtítulos extra.")
+    except Exception as e:
+        logger.exception("Error al buscar subtítulos con subliminal: %s", e)
 
-    # Limpiar archivo si tiene múltiples idiomas (ej. pista en inglés y japonés)
-    _clean_bilingual_ass(subtitle_path)
-
-    # Renombrar al esquema Jellyfin
-    sub_ext = subtitle_path.suffix  # .srt o .ass
-    video_dir = info.original_path.parent
-    final_name = f"{info.original_path.stem}.ja{sub_ext}"
-    final_path = video_dir / final_name
-
-    # Mover el subtítulo al lado del vídeo
-    shutil.move(str(subtitle_path), str(final_path))
-    logger.info("Subtítulo guardado: %s", final_path.name)
-
-    return final_path
+    return downloaded_paths

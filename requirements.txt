@@ -2,3 +2,4 @@ requests>=2.31.0
 beautifulsoup4>=4.12.0
 ffsubsync>=0.4.25
 rarfile>=4.1
+subliminal>=2.1.0

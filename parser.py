@@ -43,6 +43,14 @@ _PATTERNS: list[re.Pattern[str]] = [
         r"S(?P<season>\d{1,2})E(?P<episode>\d{1,4})",
         re.IGNORECASE,
     ),
+    # Name 第01話 (Japanese for Episode 01)
+    re.compile(
+        r"(?:\[.*?\]\s*)?"
+        r"(?P<name>.+?)\s*"
+        r"(?:\((?P<year>\d{4})\)\s*)?"
+        r"第(?P<episode>\d{1,4})話",
+        re.IGNORECASE,
+    ),
     # [Group] Name - 05 ...  (sin indicador de temporada explícito)
     re.compile(
         r"(?:\[.*?\]\s*)?"
@@ -77,6 +85,15 @@ _PATTERNS: list[re.Pattern[str]] = [
         r"(?:\((?P<year>\d{4})\)\s*)?-?\s*"
         r"E(?P<episode>\d{1,4})"
         r"(?:\s|\(|\.|\[|$)",
+        re.IGNORECASE,
+    ),
+    # Name01 / Name 01 (Fallbacks without explicit separators/tags like "Episode", "E", or "-")
+    # Requiring at least 1 letter at the end of the name part to avoid matching numbers in anime name if not space-separated.
+    re.compile(
+        r"(?:\[.*?\]\s*)?"
+        r"(?P<name>.+?[a-zA-Z])"
+        r"(?P<episode>\d{1,4})"
+        r"(?:\s|\(|\.|\[|v\d|$)",
         re.IGNORECASE,
     ),
 ]

@@ -29,7 +29,7 @@ VIDEO_EXTENSIONS: set[str] = {".mkv", ".mp4", ".avi", ".webm", ".ts"}
 # Proveedores de subtítulos japoneses
 # ---------------------------------------------------------------------------
 # Proveedor a usar: "jimaku", "kitsunekko" o "all" (prueba todos con fallback).
-SUBTITLE_PROVIDER: str = os.environ.get("ANIMERSE_SUB_PROVIDER", "all")
+SUBTITLE_PROVIDER: str = os.environ.get("ANIMERSE_SUB_PROVIDER", "jimaku")
 
 # ---------------------------------------------------------------------------
 # Kitsunekko

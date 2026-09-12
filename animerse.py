@@ -130,16 +130,16 @@ def main() -> None:
         return
 
     # ── Paso 2: Descarga de subtítulos ────────────────────────────────────
-    subtitle_map: dict[int, Path] = {}  # episode_index → subtitle_path
+    subtitle_map: dict[int, list[Path]] = {}  # episode_index → list of subtitle_paths
     if not args.skip_subs:
         for idx, ep in enumerate(episodes):
             try:
-                sub_path = download_subtitle(ep)
-                if sub_path:
-                    subtitle_map[idx] = sub_path
+                sub_paths = download_subtitle(ep)
+                if sub_paths:
+                    subtitle_map[idx] = sub_paths
             except Exception:
                 logger.exception(
-                    "Error al descargar subtítulo para %s E%02d",
+                    "Error al descargar subtítulos para %s E%02d",
                     ep.anime_name, ep.episode,
                 )
     else:
@@ -147,23 +147,24 @@ def main() -> None:
 
     # ── Paso 3: Sincronización ────────────────────────────────────────────
     if not args.skip_sync and subtitle_map:
-        for idx, sub_path in subtitle_map.items():
+        for idx, sub_paths in subtitle_map.items():
             ep = episodes[idx]
-            try:
-                ok = sync_subtitle(ep.original_path, sub_path)
-                if ok:
-                    logger.info(
-                        "✔ Subtítulo sincronizado: %s", sub_path.name
+            for sub_path in sub_paths:
+                try:
+                    ok = sync_subtitle(ep.original_path, sub_path)
+                    if ok:
+                        logger.info(
+                            "✔ Subtítulo sincronizado: %s", sub_path.name
+                        )
+                    else:
+                        logger.warning(
+                            "⚠ Sincronización fallida: %s (se conserva el original)",
+                            sub_path.name,
+                        )
+                except Exception:
+                    logger.exception(
+                        "Error al sincronizar %s", sub_path.name
                     )
-                else:
-                    logger.warning(
-                        "⚠ Sincronización fallida: %s (se conserva el original)",
-                        sub_path.name,
-                    )
-            except Exception:
-                logger.exception(
-                    "Error al sincronizar %s", sub_path.name
-                )
     elif args.skip_sync:
         logger.info("Sincronización omitida (--skip-sync).")
 
@@ -171,9 +172,9 @@ def main() -> None:
     logger.info("=" * 60)
     logger.info("Resumen:")
     logger.info("  Episodios organizados:  %d", len(episodes))
-    logger.info("  Subtítulos descargados: %d", len(subtitle_map))
-    synced = sum(1 for _ in subtitle_map)  # todos los que llegaron al paso 3
-    logger.info("  Subtítulos procesados:  %d", synced)
+    total_subs = sum(len(paths) for paths in subtitle_map.values())
+    logger.info("  Subtítulos descargados: %d", total_subs)
+    logger.info("  Episodios con subtítulos: %d", len(subtitle_map))
     logger.info("Pipeline completado.")
     logger.info("=" * 60)
 
