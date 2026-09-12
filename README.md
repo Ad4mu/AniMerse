@@ -1,7 +1,7 @@
 # 🦊 AniMerse
 
 Pipeline automatizado para servidores Jellyfin headless.  
-Organiza archivos de anime, descarga subtítulos japoneses desde [Kitsunekko](https://kitsunekko.net) y los sincroniza con el vídeo.
+Organiza archivos de anime, descarga subtítulos japoneses desde Jimaku/Kitsunekko, y subtítulos en español e inglés mediante `subliminal`, para luego sincronizarlos con el vídeo.
 
 ---
 
@@ -127,6 +127,8 @@ Cualquier argumento adicional que pases a `run.sh` se le enviará directamente a
 │   └── Season 01/
 │       ├── Jujutsu Kaisen - S01E01.mkv
 │       ├── Jujutsu Kaisen - S01E01.ja.ass
+│       ├── Jujutsu Kaisen - S01E01.es.srt
+│       ├── Jujutsu Kaisen - S01E01.en.srt
 │       ├── Jujutsu Kaisen - S01E02.mkv
 │       └── Jujutsu Kaisen - S01E02.ja.srt
 ├── Frieren Beyond Journey's End/
@@ -187,7 +189,7 @@ AniMerse/
 | `config.py` | Rutas, URLs, constantes. Sin lógica. |
 | `parser.py` | Regex para extraer nombre, episodio, temporada, año. |
 | `organizer.py` | `shutil.move` + creación de carpetas Jellyfin. |
-| `subtitles.py` | HTTP scraping de Kitsunekko, manejo de .zip/.rar. |
+| `subtitles.py` | HTTP scraping (Jimaku/Kitsunekko), descargas vía `subliminal` (es/en) y manejo de .zip/.rar. |
 | `sync.py` | Wrapper de `subprocess` para ffsubsync/alass. |
 | `animerse.py` | Orquestación del pipeline, CLI y logging. |
 
